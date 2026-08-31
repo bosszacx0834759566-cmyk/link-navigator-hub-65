@@ -699,54 +699,40 @@ function LaserBeam({
   rxId: string;
   live: LiveMap;
 }) {
-  const group = useRef<THREE.Group>(null);
-  const scratch = useMemo(
-    () => ({ a: new THREE.Vector3(), b: new THREE.Vector3(), mid: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0) }),
-    []
-  );
+  // Thin straight green laser line (no glow, no cylinder effects).
+  const lineRef = useRef<THREE.Line>(null);
+  const geometry = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute(
+      'position',
+      new THREE.BufferAttribute(new Float32Array(6), 3)
+    );
+    return g;
+  }, []);
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   useFrame(() => {
     const from = live.get(satId);
     const to = live.get(rxId);
-    const g = group.current;
-    if (!from || !to || !g) return;
-    const { a, b, mid, up } = scratch;
-    a.copy(from);
-    b.copy(to);
-    mid.copy(a).add(b).multiplyScalar(0.5);
-    const dist = a.distanceTo(b);
-    g.position.copy(mid);
-    g.quaternion.setFromUnitVectors(up, b.clone().sub(a).normalize());
-    g.scale.set(0.022, dist, 0.022);
+    if (!from || !to || !lineRef.current) return;
+    const pos = geometry.getAttribute('position') as THREE.BufferAttribute;
+    pos.setXYZ(0, from.x, from.y, from.z);
+    pos.setXYZ(1, to.x, to.y, to.z);
+    pos.needsUpdate = true;
   });
 
   return (
-    <group ref={group}>
-      {/* faint outer glow */}
-      <mesh>
-        <cylinderGeometry args={[1, 1, 1, 12, 1, true]} />
-        <meshBasicMaterial
-          color="#4ade80"
-          transparent
-          opacity={0.3}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* solid dark-green laser core */}
-      <mesh>
-        <cylinderGeometry args={[0.45, 0.45, 1, 12, 1, true]} />
-        <meshBasicMaterial
-          color="#16a34a"
-          transparent
-          opacity={1}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-    </group>
+    <primitive
+      object={useMemo(() => {
+        const line = new THREE.Line(
+          geometry,
+          new THREE.LineBasicMaterial({ color: LASER_GREEN, transparent: true, opacity: 0.9 })
+        );
+        line.frustumCulled = false;
+        return line;
+      }, [geometry])}
+      ref={lineRef}
+    />
   );
 }
 
@@ -960,7 +946,7 @@ function DownlinkBeam({
   );
 }
 
-/** Focused laser beam: taut, additive, with fast travelling photon packets. */
+/** Focused laser beam: thin straight line, no glow or packet effects. */
 function OpticalBeam({
   curve,
   color,
@@ -970,62 +956,8 @@ function OpticalBeam({
   color: string;
   strength: number;
 }) {
-  const packs = useRef<THREE.Group>(null);
-  const offsets = useMemo(() => [0, 0.34, 0.67], []);
-  const t = useRef(Math.random());
-
-  useFrame((_, d) => {
-    t.current = (t.current + d * 0.55) % 1;
-    if (!packs.current) return;
-    packs.current.children.forEach((child, i) => {
-      const p = (t.current + offsets[i]!) % 1;
-      const pt = curve.getPointAt(p);
-      child.position.copy(pt);
-      const ahead = curve.getPointAt(Math.min(0.999, p + 0.02));
-      child.lookAt(ahead);
-    });
-  });
-
-  return (
-    <group>
-      {/* hard core */}
-      <mesh>
-        <tubeGeometry args={[curve, 48, 0.0022, 6, false]} />
-        <meshBasicMaterial
-          color="#e0f2fe"
-          transparent
-          opacity={0.75 * strength}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
-      {/* glow sheath */}
-      <mesh>
-        <tubeGeometry args={[curve, 48, 0.008, 8, false]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={0.22 * strength}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
-      <group ref={packs}>
-        {offsets.map((o) => (
-          <mesh key={o}>
-            <cylinderGeometry args={[0.0035, 0.0035, 0.05, 6]} />
-            <meshBasicMaterial
-              color="#f0f9ff"
-              transparent
-              opacity={0.9 * strength}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-            />
-          </mesh>
-        ))}
-      </group>
-    </group>
-  );
+  const points = usePoints(curve, 32);
+  return <SolidLine points={points} color={color} opacity={0.85 * strength} />;
 }
 
 /** Radio / microwave: bowed corridor carrying expanding wavefronts. */
