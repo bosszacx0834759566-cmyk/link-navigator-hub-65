@@ -946,7 +946,7 @@ function DownlinkBeam({
   );
 }
 
-/** Focused laser beam: taut, additive, with fast travelling photon packets. */
+/** Focused laser beam: thin straight line, no glow or packet effects. */
 function OpticalBeam({
   curve,
   color,
@@ -956,62 +956,8 @@ function OpticalBeam({
   color: string;
   strength: number;
 }) {
-  const packs = useRef<THREE.Group>(null);
-  const offsets = useMemo(() => [0, 0.34, 0.67], []);
-  const t = useRef(Math.random());
-
-  useFrame((_, d) => {
-    t.current = (t.current + d * 0.55) % 1;
-    if (!packs.current) return;
-    packs.current.children.forEach((child, i) => {
-      const p = (t.current + offsets[i]!) % 1;
-      const pt = curve.getPointAt(p);
-      child.position.copy(pt);
-      const ahead = curve.getPointAt(Math.min(0.999, p + 0.02));
-      child.lookAt(ahead);
-    });
-  });
-
-  return (
-    <group>
-      {/* hard core */}
-      <mesh>
-        <tubeGeometry args={[curve, 48, 0.0022, 6, false]} />
-        <meshBasicMaterial
-          color="#e0f2fe"
-          transparent
-          opacity={0.75 * strength}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
-      {/* glow sheath */}
-      <mesh>
-        <tubeGeometry args={[curve, 48, 0.008, 8, false]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={0.22 * strength}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
-      <group ref={packs}>
-        {offsets.map((o) => (
-          <mesh key={o}>
-            <cylinderGeometry args={[0.0035, 0.0035, 0.05, 6]} />
-            <meshBasicMaterial
-              color="#f0f9ff"
-              transparent
-              opacity={0.9 * strength}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-            />
-          </mesh>
-        ))}
-      </group>
-    </group>
-  );
+  const points = usePoints(curve, 32);
+  return <SolidLine points={points} color={color} opacity={0.85 * strength} />;
 }
 
 /** Radio / microwave: bowed corridor carrying expanding wavefronts. */
