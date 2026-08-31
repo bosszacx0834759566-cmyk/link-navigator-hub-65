@@ -365,28 +365,16 @@ export function MapScene({ state }: { state: OloLinkState }) {
               if (Math.abs(pa.x - pb.x) > MAP_W / 2) continue; // antimeridian wrap
               const strength = 1 - best.d / 16;
               lines.push(
-                <g key={`laser-${h.id}`}>
-                  <line
-                    x1={pa.x}
-                    y1={pa.y}
-                    x2={pb.x}
-                    y2={pb.y}
-                    stroke="#22c55e"
-                    strokeWidth={3 * inv}
-                    strokeOpacity={0.2 + 0.25 * strength}
-                    strokeLinecap="round"
-                  />
-                  <line
-                    x1={pa.x}
-                    y1={pa.y}
-                    x2={pb.x}
-                    y2={pb.y}
-                    stroke="#4ade80"
-                    strokeWidth={1 * inv}
-                    strokeOpacity={0.6 + 0.4 * strength}
-                    strokeLinecap="round"
-                  />
-                </g>
+                <line
+                  key={`laser-${h.id}`}
+                  x1={pa.x}
+                  y1={pa.y}
+                  x2={pb.x}
+                  y2={pb.y}
+                  stroke="#22c55e"
+                  strokeWidth={1.2 * inv}
+                  strokeOpacity={0.5 + 0.5 * strength}
+                />
               );
             }
             return lines;
